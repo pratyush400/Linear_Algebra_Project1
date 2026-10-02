@@ -1,11 +1,5 @@
-function[R_eff] = R_eff(node1, node2, R_grid)
-
-if nargin < 3
-    [Node1, Node2, ResVal] = readResistance(); 
-else
-    [Node1, Node2, ~] = readResistance();    
-    ResVal = ones(size(Node1)) * R_grid;     
-end
+%question10
+[Node1, Node2, ResVal] = readResistance();
 
 A = zeros(25,25);
 b = zeros(25,1);
@@ -16,19 +10,18 @@ b(node2) = -1;
 node_reff =0;
 if node_reff ~= node1 && node_reff ~= node2
     node_reff = 25;
-end
 
 
 for k = 1:length(ResVal)
     n1 = Node1(k);
     n2 = Node2(k);
-    R  = ResVal(k);
+    R = 1:20;
     C  = 1 / R; 
     A(n1, n1) = A(n1, n1) + C;  
     A(n1, n2) = A(n1, n2) - C;  
     A(n2, n2) = A(n2, n2) + C;  
     A(n2, n1) = A(n2, n1) - C;  
-    
+
 end
 A(25, :) = 0;
 A(25, 25) = 1;
@@ -42,4 +35,3 @@ V = U \ y;
 
 R_eff = abs(V(node1) - V(node2));
 
-end

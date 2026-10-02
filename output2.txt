@@ -1,0 +1,5 @@
+Grid Size: 5x5 | Current at Node N: 4.6809 A
+Grid Size: 10x10 | Current at Node N: 3.3204 A
+Grid Size: 15x15 | Current at Node N: 2.8357 A
+Grid Size: 20x20 | Current at Node N: 2.5692 A
+Grid Size: 25x25 | Current at Node N: 2.3946 A

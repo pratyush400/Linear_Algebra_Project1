@@ -1,7 +1,8 @@
+clear; clc; close all;
+
 
 [Node1, Node2, ResVal] = readResistance();
 [Node, Voltage] = readVoltage();
-
 
 fileID = fopen('output.txt', 'w');
 if fileID == -1
@@ -35,16 +36,10 @@ for k = 1:length(ResVal)
     end
 
 end
- 
-% disp(A); 
-% disp(b);
-
-
-
+%base circuit
 [L, U] = Lufac(A);
 
-% disp(L);
-% disp(U);
+
 y = L \ b; %L*y = b 
 V = U \ y; % U*V = y here v is voltage
 
@@ -54,21 +49,152 @@ for k = 1:length(ResVal)
     n1 = Node1(k);
     n2 = Node2(k);
     R = ResVal(k);
-
     LinkCurr(k) = (V(n1) - V(n2))/R;
     fprintf(fileID,'Link: %d | Node %d Voltage: %.3f V to Node %d Voltage: %.3f V | Current through each link: %.4f A\n', k, n1,V(n1), n2,V(n2), LinkCurr(k));
+end
+fclose(fileID);
 
+%Q8(i)
+%to generate plot for varying resistance
+
+fileID1 = fopen('output1.txt', 'w');
+if fileID1 == -1
+    error('File could not be opened')
 end
 
-for k = 1:length(ResVal)
-    for R = 1:20 
+plotarray = zeros(1,20);
+
+for R = 1:20
+    A_temp = zeros(25,25);
+    b_temp = zeros(25,1);
+
+    A_temp(1,1) = 1;
+    b_temp(1) = 10;
+    A_temp(25,25) = 1;
+    b_temp(25) = 0;
+
+    TotalPower = 0;
+    C  = 1 / R;
+
+    for k = 1:length(ResVal)
+        n1 = Node1(k);
+        n2 = Node2(k);
         
+        if n1 ~= 1 && n1 ~= 25
+            A_temp(n1, n1) = A_temp(n1, n1) + C;  
+            A_temp(n1, n2) = A_temp(n1, n2) - C;  
+        end
 
+        if n2 ~= 1 && n2 ~= 25
+            A_temp(n2, n2) = A_temp(n2, n2) + C;  
+            A_temp(n2, n1) = A_temp(n2, n1) - C;  
+        end
+    end
+
+    [L_t, U_t] = Lufac(A_temp);
+    V_temp = U_t \ (L_t\b_temp);
+    for k = 1:length(ResVal)
+        n1 = Node1(k); 
+        n2 = Node2(k);
+        curr = (V_temp(n1) - V_temp(n2)) / R;
+        volt = (V_temp(n1) - V_temp(n2));
+        TotalPower = TotalPower + (curr * volt);
+        fprintf(fileID1,'R: %d | Link: %d | Current: %.4f A\n', R, k, curr);
+    end
+
+    plotarray(R) = TotalPower;
+    fprintf('Total Power = %.4f\n', TotalPower);
+end
+fclose(fileID1);
+
+figure(1)
+plot(1:20, plotarray, '-s', 'LineWidth', 1.5);
+title("Varying Resistance Plot");
+xlabel("Resistance (Ω)")
+ylabel("Power Dissipated")
+
+%Q8(ii)
+%to generate plot for varying resistance
+
+fileID2 = fopen('output2.txt', 'w');
+if fileID2 == -1
+    error('File could not be opened')
 end
 
+grid_sizes = 5:5:25;
+currentarray = zeros(1, length(grid_sizes));
+for idx = 1:length(grid_sizes)
+    g = grid_sizes(idx);
+    N = g*g;
 
+    G_Node1 = []; 
+        G_Node2 = [];
+        for row = 1:g
+            for col = 1:g
+                node = (row - 1) * g + col;
+                if col < g
+                    G_Node1 = [G_Node1; node]; 
+                    G_Node2 = [G_Node2; node + 1]; 
+                end
+                if row < g
+                    G_Node1 = [G_Node1; node]; 
+                    G_Node2 = [G_Node2; node + g]; 
+                end
+            end
+        end
 
+A_g = zeros(N,N);
+b_g = zeros(N,1);
 
+A_g(1,1) = 1; b_g(1) = 10;
+A_g(N,N) = 1; b_g(N) = 0;
 
+C_unit = 1;
 
+for k = 1:length(G_Node1)
+    n1 = G_Node1(k); n2 = G_Node2(k);
+    if n1 ~= 1 && n1 ~= N
+        A_g(n1, n1) = A_g(n1, n1) + C_unit;  
+        A_g(n1, n2) = A_g(n1, n2) - C_unit;  
+    end
+    if n2 ~= 1 && n2 ~= N
+        A_g(n2, n2) = A_g(n2, n2) + C_unit;  
+        A_g(n2, n1) = A_g(n2, n1) - C_unit;  
+    end
+end
 
+[L_g, U_g] = Lufac(A_g);
+V_g = U_g \ (L_g \ b_g);
+ corner_current = 0;
+ for k = 1:length(G_Node1)
+     if G_Node2(k) == N
+         corner_current = corner_current + (V_g(G_Node1(k)) - V_g(N));
+     elseif G_Node1(k) == N
+         corner_current = corner_current - (V_g(G_Node1(k)) - V_g(N));
+     end
+ end
+
+ currentarray(idx) = corner_current;
+ fprintf(fileID2, 'Grid Size: %dx%d | Current at Node N: %.4f A\n', g, g, corner_current);
+end
+fclose(fileID2);
+    
+figure(2)
+plot(linspace(5,25,5), currentarray);
+title("Varying Grid Size Plot");
+xlabel("Grid Size (x * x)")
+ylabel("Current Flowing Through Bottom Right Node")
+grid on;
+
+%%Part 10
+eff_res_results = zeros(1, 20); 
+
+for R = 1:20
+    eff_res_results(R) = R_eff(1, 25, R);
+end
+figure;
+plot(1:20, eff_res_results, '-o', 'LineWidth', 2, 'MarkerFaceColor', 'b');
+grid on;
+title('Effective Resistance between Node 1 and Node 25 vs Grid Resistance R');
+xlabel('Grid Resistance R (\Omega)');
+ylabel('Effective Resistance R_{eff} (\Omega)');
